@@ -10,6 +10,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 public class Main implements ApplicationListener {
     SpriteBatch spriteBatch;
 
+    // --- Recursos do Personagem ---
     Texture idleTexture;
     Texture[] runTextures;
     int NUM_RUN_FRAMES = 8;
@@ -20,47 +21,41 @@ public class Main implements ApplicationListener {
 
     float animationTime;
     float frameDuration = 0.1f;
-    int currentFrameIndex;
-
     boolean isMoving;
     boolean facingRight = true;
+
+    // --- Recurso do Background ---
+    Texture backgroundTexture; 
 
     @Override
     public void create() {
         spriteBatch = new SpriteBatch();
 
-        // Carrega a textura do personagem parado (assumindo que está diretamente em assets/)
+        // Carrega as texturas do personagem
         idleTexture = new Texture("character.png");
-
-        // Carrega todas as texturas da animação de corrida
         runTextures = new Texture[NUM_RUN_FRAMES];
         for (int i = 0; i < NUM_RUN_FRAMES; i++) {
-            // Caminho modificado para incluir a subpasta 'characterRun'
             runTextures[i] = new Texture("characterRun/run" + (i + 1) + ".png");
         }
 
-        // Inicializa a posição do personagem
         characterX = 0;
-        characterY = (Gdx.graphics.getHeight() - idleTexture.getHeight()) / 2f;
+        characterY = 0;
 
-        // Inicializa o estado da animação
-        animationTime = 0;
-        currentFrameIndex = 0;
-        isMoving = false;
+        backgroundTexture = new Texture("city1.png"); 
     }
 
     @Override
     public void resize(int width, int height) {
-        characterY = (height - idleTexture.getHeight()) / 2f;
+        characterY = 20;
     }
 
     @Override
     public void render() {
         ScreenUtils.clear(0.2f, 0.2f, 0.8f, 1);
 
-        float deltaTime = Gdx.graphics.getDeltaTime();
+        float deltaTime = Gdx.graphics.getDeltaTime(); 
 
-        isMoving = false;
+        isMoving = false; 
 
         if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
             characterX -= speed * deltaTime;
@@ -75,13 +70,15 @@ public class Main implements ApplicationListener {
         Texture currentFrameTexture;
         if (isMoving) {
             animationTime += deltaTime;
-            currentFrameIndex = (int)(animationTime / frameDuration) % NUM_RUN_FRAMES;
+            // Calcula qual frame da animação de corrida deve ser exibido (looping)
+            int currentFrameIndex = (int)(animationTime / frameDuration) % NUM_RUN_FRAMES;
             currentFrameTexture = runTextures[currentFrameIndex];
         } else {
             animationTime = 0;
-            currentFrameTexture = idleTexture;
+            currentFrameTexture = idleTexture; 
         }
 
+        // Limita o personagem dentro das bordas da tela
         if (characterX < 0) {
             characterX = 0;
         }
@@ -92,8 +89,9 @@ public class Main implements ApplicationListener {
 
         spriteBatch.begin();
 
-        float textureHeight = currentFrameTexture.getHeight();
+        spriteBatch.draw(backgroundTexture, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
+        float textureHeight = currentFrameTexture.getHeight();
         if (!facingRight) {
             spriteBatch.draw(currentFrameTexture, characterX + textureWidth, characterY, -textureWidth, textureHeight);
         } else {
@@ -113,10 +111,12 @@ public class Main implements ApplicationListener {
 
     @Override
     public void dispose() {
+        // Libera todos os recursos da memória
         spriteBatch.dispose();
         idleTexture.dispose();
         for (Texture texture : runTextures) {
             texture.dispose();
         }
+        backgroundTexture.dispose(); 
     }
 }
