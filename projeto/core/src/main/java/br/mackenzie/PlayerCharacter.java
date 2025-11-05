@@ -16,8 +16,8 @@ public class PlayerCharacter {
 
     private float currentEffectiveSpeed = 0f; 
     private float maxSpeed = 350f;
-    private float accelerationPerTap = 80f; // Quanto de velocidade é adicionado por cada toque na barra de espaço
-    private float decelerationRate = 150f;  // Quanto de velocidade é perdido por segundo (desaceleração natural)
+    private float accelerationPerTap = 100f; // Quanto de velocidade é adicionado por cada toque na barra de espaço
+    private float decelerationRate = 100f;  // Quanto de velocidade é perdido por segundo (desaceleração natural)
 
     private float animationTime; 
     private boolean isMoving;  
