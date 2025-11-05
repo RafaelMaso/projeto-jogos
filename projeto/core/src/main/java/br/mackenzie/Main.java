@@ -11,9 +11,8 @@ public class Main implements ApplicationListener {
     PlayerCharacter player;
     Texture backgroundTexture;
 
-    float backgroundScrollX = 0; // Posição de rolagem horizontal do background
+    float backgroundScrollX = 0; 
 
-    // Variáveis para manter a proporção do background
     float scaledBackgroundWidth;
     float scaledBackgroundHeight;
 
@@ -23,7 +22,7 @@ public class Main implements ApplicationListener {
 
         backgroundTexture = new Texture("city1.png");
 
-        // Calcula as dimensões escaladas do background
+        // Calcula as dimensões do background
         scaledBackgroundHeight = Gdx.graphics.getHeight();
         float aspectRatio = (float) backgroundTexture.getWidth() / backgroundTexture.getHeight();
         scaledBackgroundWidth = scaledBackgroundHeight * aspectRatio;
@@ -33,14 +32,13 @@ public class Main implements ApplicationListener {
 
     @Override
     public void resize(int width, int height) {
-        // Quando a tela é redimensionada, recalculamos as dimensões escaladas do background
+        // Quando a tela é redimensionada, recalculamos as dimensões do background
         scaledBackgroundHeight = height;
         float aspectRatio = (float) backgroundTexture.getWidth() / backgroundTexture.getHeight();
         scaledBackgroundWidth = scaledBackgroundHeight * aspectRatio;
 
         if (player != null) {
-            player.setY(20); // Mantém o player na parte inferior da tela
-            // Se o player está no limite da tela, ajuste a posição para a nova largura da tela
+            player.setY(20); 
             if (player.getX() > width - player.getWidth()) {
                 player.setX(width - player.getWidth());
             }
@@ -53,45 +51,31 @@ public class Main implements ApplicationListener {
 
         float deltaTime = Gdx.graphics.getDeltaTime();
 
-        player.update(deltaTime); // Atualiza o estado da animação e calcula deltaXThisFrame
+        player.update(deltaTime); 
 
-        float playerRequestedDeltaX = player.getDeltaXThisFrame(); // Movimento que o player 'quer' fazer
+        float playerRequestedDeltaX = player.getDeltaXThisFrame();
 
-        float playerScreenMoveX = playerRequestedDeltaX; // Movimento que o player realmente fará na tela
-        float backgroundScrollDelta = 0; // Deslocamento que o background fará
+        float playerScreenMoveX = playerRequestedDeltaX; 
+        float backgroundScrollDelta = 0; 
 
         float screenWidth = Gdx.graphics.getWidth();
-        float playerXOnScreen = player.getX(); // Posição X atual do player na tela
+        float playerXOnScreen = player.getX();
 
-        // Define uma "zona ativa" na tela onde o jogador se move livremente.
-        // Se ele tentar sair dessa zona, o background começa a rolar.
-        float leftScrollThreshold = screenWidth * 0.2f; // Ex: 20% da tela a partir da esquerda
-        float rightScrollThreshold = screenWidth * 0.8f - player.getWidth(); // Ex: 80% da tela a partir da esquerda, ajustado pela largura do player
+        float rightScrollThreshold = screenWidth * 0.8f - player.getWidth(); 
 
-        // Lógica para movimento para a direita (agora o player só se move para a direita)
-        if (playerRequestedDeltaX > 0) { // O jogador está tentando mover para a direita
+        if (playerRequestedDeltaX > 0) { 
             if (playerXOnScreen >= rightScrollThreshold) {
-                // O jogador já está no limite direito da zona de rolagem, então o background rola
-                playerScreenMoveX = 0; // O player para de se mover na tela
-                backgroundScrollDelta = -playerRequestedDeltaX; // O background rola para a esquerda
+                playerScreenMoveX = 0; 
+                backgroundScrollDelta = -playerRequestedDeltaX; 
             } else if (playerXOnScreen + playerRequestedDeltaX > rightScrollThreshold) {
-                // O jogador vai entrar na zona de rolagem neste frame
-                // Move o jogador até o limite e o restante do movimento rola o background
                 playerScreenMoveX = rightScrollThreshold - playerXOnScreen;
                 backgroundScrollDelta = -(playerRequestedDeltaX - playerScreenMoveX);
             }
         }
-        // A lógica para movimento para a esquerda foi removida do PlayerCharacter,
-        // então este bloco não será mais ativado.
-        // Se quiséssemos um limite para a esquerda sem o jogador ir "para trás", poderíamos
-        // ter uma lógica para que backgroundScrollX não se torne muito positivo.
-        // Por enquanto, o player só se move para a direita ou fica parado.
 
-        // Aplica os movimentos calculados
         player.setX(playerXOnScreen + playerScreenMoveX);
         backgroundScrollX += backgroundScrollDelta;
 
-        // Garante que o jogador não saia da tela
         if (player.getX() < 0) {
             player.setX(0);
         }
@@ -99,7 +83,6 @@ public class Main implements ApplicationListener {
             player.setX(screenWidth - player.getWidth());
         }
 
-        // Lógica de loop para o background
         while (backgroundScrollX <= -scaledBackgroundWidth) {
             backgroundScrollX += scaledBackgroundWidth;
         }
@@ -109,11 +92,9 @@ public class Main implements ApplicationListener {
 
         spriteBatch.begin();
 
-        // Desenha o background usando as dimensões SCALED
         spriteBatch.draw(backgroundTexture, backgroundScrollX, 0, scaledBackgroundWidth, scaledBackgroundHeight);
         spriteBatch.draw(backgroundTexture, backgroundScrollX + scaledBackgroundWidth, 0, scaledBackgroundWidth, scaledBackgroundHeight);
         spriteBatch.draw(backgroundTexture, backgroundScrollX - scaledBackgroundWidth, 0, scaledBackgroundWidth, scaledBackgroundHeight);
-
 
         player.render(spriteBatch);
 
