@@ -2,101 +2,101 @@ package br.mackenzie;
 
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.ScreenUtils;
 
 public class Main implements ApplicationListener {
     SpriteBatch spriteBatch;
+    PlayerCharacter player;
+    Texture backgroundTexture;
 
-    // --- Recursos do Personagem ---
-    Texture idleTexture;
-    Texture[] runTextures;
-    int NUM_RUN_FRAMES = 8;
+    float backgroundScrollX = 0; 
 
-    float characterX;
-    float characterY;
-    float speed = 200f;
-
-    float animationTime;
-    float frameDuration = 0.1f;
-    boolean isMoving;
-    boolean facingRight = true;
-
-    // --- Recurso do Background ---
-    Texture backgroundTexture; 
+    float scaledBackgroundWidth;
+    float scaledBackgroundHeight;
 
     @Override
     public void create() {
         spriteBatch = new SpriteBatch();
 
-        // Carrega as texturas do personagem
-        idleTexture = new Texture("character.png");
-        runTextures = new Texture[NUM_RUN_FRAMES];
-        for (int i = 0; i < NUM_RUN_FRAMES; i++) {
-            runTextures[i] = new Texture("characterRun/run" + (i + 1) + ".png");
-        }
+        backgroundTexture = new Texture("city1.png");
 
-        characterX = 0;
-        characterY = 0;
+        // Calcula as dimensões do background
+        scaledBackgroundHeight = Gdx.graphics.getHeight();
+        float aspectRatio = (float) backgroundTexture.getWidth() / backgroundTexture.getHeight();
+        scaledBackgroundWidth = scaledBackgroundHeight * aspectRatio;
 
-        backgroundTexture = new Texture("city1.png"); 
+        player = new PlayerCharacter(Gdx.graphics.getWidth() / 4f, 20); // Inicia o player mais para a esquerda
     }
 
     @Override
     public void resize(int width, int height) {
-        characterY = 20;
+        // Quando a tela é redimensionada, recalculamos as dimensões do background
+        scaledBackgroundHeight = height;
+        float aspectRatio = (float) backgroundTexture.getWidth() / backgroundTexture.getHeight();
+        scaledBackgroundWidth = scaledBackgroundHeight * aspectRatio;
+
+        if (player != null) {
+            player.setY(20); 
+            if (player.getX() > width - player.getWidth()) {
+                player.setX(width - player.getWidth());
+            }
+        }
     }
 
     @Override
     public void render() {
         ScreenUtils.clear(0.2f, 0.2f, 0.8f, 1);
 
-        float deltaTime = Gdx.graphics.getDeltaTime(); 
+        float deltaTime = Gdx.graphics.getDeltaTime();
 
-        isMoving = false; 
+        player.update(deltaTime); 
 
-        if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
-            characterX -= speed * deltaTime;
-            isMoving = true;
-            facingRight = false;
-        } else if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
-            characterX += speed * deltaTime;
-            isMoving = true;
-            facingRight = true;
+        float playerRequestedDeltaX = player.getDeltaXThisFrame();
+
+        float playerScreenMoveX = playerRequestedDeltaX; 
+        float backgroundScrollDelta = 0; 
+
+        float screenWidth = Gdx.graphics.getWidth();
+        float playerXOnScreen = player.getX();
+
+        float rightScrollThreshold = screenWidth * 0.8f - player.getWidth(); 
+
+        if (playerRequestedDeltaX > 0) { 
+            if (playerXOnScreen >= rightScrollThreshold) {
+                playerScreenMoveX = 0; 
+                backgroundScrollDelta = -playerRequestedDeltaX; 
+            } else if (playerXOnScreen + playerRequestedDeltaX > rightScrollThreshold) {
+                playerScreenMoveX = rightScrollThreshold - playerXOnScreen;
+                backgroundScrollDelta = -(playerRequestedDeltaX - playerScreenMoveX);
+            }
         }
 
-        Texture currentFrameTexture;
-        if (isMoving) {
-            animationTime += deltaTime;
-            // Calcula qual frame da animação de corrida deve ser exibido (looping)
-            int currentFrameIndex = (int)(animationTime / frameDuration) % NUM_RUN_FRAMES;
-            currentFrameTexture = runTextures[currentFrameIndex];
-        } else {
-            animationTime = 0;
-            currentFrameTexture = idleTexture; 
+        player.setX(playerXOnScreen + playerScreenMoveX);
+        backgroundScrollX += backgroundScrollDelta;
+
+        if (player.getX() < 0) {
+            player.setX(0);
+        }
+        if (player.getX() > screenWidth - player.getWidth()) {
+            player.setX(screenWidth - player.getWidth());
         }
 
-        // Limita o personagem dentro das bordas da tela
-        if (characterX < 0) {
-            characterX = 0;
+        while (backgroundScrollX <= -scaledBackgroundWidth) {
+            backgroundScrollX += scaledBackgroundWidth;
         }
-        float textureWidth = currentFrameTexture.getWidth();
-        if (characterX > Gdx.graphics.getWidth() - textureWidth) {
-            characterX = Gdx.graphics.getWidth() - textureWidth;
+        while (backgroundScrollX >= scaledBackgroundWidth) {
+            backgroundScrollX -= scaledBackgroundWidth;
         }
 
         spriteBatch.begin();
 
-        spriteBatch.draw(backgroundTexture, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        spriteBatch.draw(backgroundTexture, backgroundScrollX, 0, scaledBackgroundWidth, scaledBackgroundHeight);
+        spriteBatch.draw(backgroundTexture, backgroundScrollX + scaledBackgroundWidth, 0, scaledBackgroundWidth, scaledBackgroundHeight);
+        spriteBatch.draw(backgroundTexture, backgroundScrollX - scaledBackgroundWidth, 0, scaledBackgroundWidth, scaledBackgroundHeight);
 
-        float textureHeight = currentFrameTexture.getHeight();
-        if (!facingRight) {
-            spriteBatch.draw(currentFrameTexture, characterX + textureWidth, characterY, -textureWidth, textureHeight);
-        } else {
-            spriteBatch.draw(currentFrameTexture, characterX, characterY, textureWidth, textureHeight);
-        }
+        player.render(spriteBatch);
 
         spriteBatch.end();
     }
@@ -111,12 +111,8 @@ public class Main implements ApplicationListener {
 
     @Override
     public void dispose() {
-        // Libera todos os recursos da memória
         spriteBatch.dispose();
-        idleTexture.dispose();
-        for (Texture texture : runTextures) {
-            texture.dispose();
-        }
-        backgroundTexture.dispose(); 
+        backgroundTexture.dispose();
+        player.dispose();
     }
 }
