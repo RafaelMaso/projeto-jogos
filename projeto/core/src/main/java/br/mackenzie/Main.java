@@ -5,6 +5,8 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.Color;
 
 public class Main implements ApplicationListener {
     SpriteBatch spriteBatch;
@@ -15,6 +17,9 @@ public class Main implements ApplicationListener {
 
     float scaledBackgroundWidth;
     float scaledBackgroundHeight;
+
+    ScoreManager scoreManager;
+    BitmapFont font;
 
     @Override
     public void create() {
@@ -28,6 +33,11 @@ public class Main implements ApplicationListener {
         scaledBackgroundWidth = scaledBackgroundHeight * aspectRatio;
 
         player = new PlayerCharacter(Gdx.graphics.getWidth() / 4f, 20); // Inicia o player mais para a esquerda
+
+        scoreManager = new ScoreManager(10);
+        font = new BitmapFont();
+        font.setColor(Color.WHITE);
+        font.getData().setScale(2);
     }
 
     @Override
@@ -52,6 +62,7 @@ public class Main implements ApplicationListener {
         float deltaTime = Gdx.graphics.getDeltaTime();
 
         player.update(deltaTime); 
+        scoreManager.update(deltaTime); 
 
         float playerRequestedDeltaX = player.getDeltaXThisFrame();
 
@@ -98,6 +109,8 @@ public class Main implements ApplicationListener {
 
         player.render(spriteBatch);
 
+        font.draw(spriteBatch, "Score: " + scoreManager.getScore(), 10, Gdx.graphics.getHeight() - 10);
+
         spriteBatch.end();
     }
 
@@ -114,5 +127,6 @@ public class Main implements ApplicationListener {
         spriteBatch.dispose();
         backgroundTexture.dispose();
         player.dispose();
+        font.dispose(); // Libera os recursos da fonte
     }
 }
