@@ -11,6 +11,7 @@ import com.badlogic.gdx.graphics.Color;
 public class Main implements ApplicationListener {
     SpriteBatch spriteBatch;
     PlayerCharacter player;
+    Police police;
     Texture backgroundTexture;
 
     float backgroundScrollX = 0; 
@@ -21,28 +22,38 @@ public class Main implements ApplicationListener {
     ScoreManager scoreManager;
     BitmapFont font;
 
+    /**
+     * Chamado quando a aplicação é criada. Inicializa recursos e objetos do jogo.
+     */
     @Override
     public void create() {
         spriteBatch = new SpriteBatch();
 
         backgroundTexture = new Texture("city1.png");
 
-        // Calcula as dimensões do background
         scaledBackgroundHeight = Gdx.graphics.getHeight();
         float aspectRatio = (float) backgroundTexture.getWidth() / backgroundTexture.getHeight();
         scaledBackgroundWidth = scaledBackgroundHeight * aspectRatio;
 
-        player = new PlayerCharacter(Gdx.graphics.getWidth() / 4f, 20); // Inicia o player mais para a esquerda
+        player = new PlayerCharacter(Gdx.graphics.getWidth() / 4f, 20);
 
+        police = new Police(player.getX() - 200f, 20);
+        // Define a altura do policial igual à altura do jogador
+        police.setHeight(player.getHeight()); 
+        
         scoreManager = new ScoreManager(10);
         font = new BitmapFont();
         font.setColor(Color.WHITE);
         font.getData().setScale(2);
     }
 
+    /**
+     * Chamado quando a tela é redimensionada.
+     * @param width A nova largura da tela.
+     * @param height A nova altura da tela.
+     */
     @Override
     public void resize(int width, int height) {
-        // Quando a tela é redimensionada, recalculamos as dimensões do background
         scaledBackgroundHeight = height;
         float aspectRatio = (float) backgroundTexture.getWidth() / backgroundTexture.getHeight();
         scaledBackgroundWidth = scaledBackgroundHeight * aspectRatio;
@@ -53,8 +64,16 @@ public class Main implements ApplicationListener {
                 player.setX(width - player.getWidth());
             }
         }
+        if (police != null) {
+            police.setY(20); 
+            // Atualiza a altura do policial para corresponder à do jogador novamente
+            police.setHeight(player.getHeight() + 50); 
+        }
     }
 
+    /**
+     * Chamado a cada frame para atualizar a lógica do jogo e renderizar os elementos.
+     */
     @Override
     public void render() {
         ScreenUtils.clear(0.2f, 0.2f, 0.8f, 1);
@@ -62,6 +81,7 @@ public class Main implements ApplicationListener {
         float deltaTime = Gdx.graphics.getDeltaTime();
 
         player.update(deltaTime); 
+        police.update(deltaTime);
         scoreManager.update(deltaTime); 
 
         float playerRequestedDeltaX = player.getDeltaXThisFrame();
@@ -108,25 +128,36 @@ public class Main implements ApplicationListener {
         spriteBatch.draw(backgroundTexture, backgroundScrollX - scaledBackgroundWidth, 0, scaledBackgroundWidth, scaledBackgroundHeight);
 
         player.render(spriteBatch);
+        police.render(spriteBatch, backgroundScrollX);
 
         font.draw(spriteBatch, "Score: " + scoreManager.getScore(), 10, Gdx.graphics.getHeight() - 10);
 
         spriteBatch.end();
     }
 
+    /**
+     * Chamado quando a aplicação é pausada.
+     */
     @Override
     public void pause() {
     }
 
+    /**
+     * Chamado quando a aplicação é resumida após uma pausa.
+     */
     @Override
     public void resume() {
     }
 
+    /**
+     * Chamado quando a aplicação está sendo encerrada. Libera todos os recursos.
+     */
     @Override
     public void dispose() {
         spriteBatch.dispose();
         backgroundTexture.dispose();
         player.dispose();
-        font.dispose(); // Libera os recursos da fonte
+        police.dispose();
+        font.dispose();
     }
 }
