@@ -3,6 +3,7 @@ package br.mackenzie;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.math.Rectangle;
 
 public class Police {
     private Texture[] runTextures;
@@ -11,7 +12,9 @@ public class Police {
 
     private float x;
     private float y;
-    private float speed = 150f;
+    private float currentSpeed;
+    private float maxSpeed = 250f;
+    private float acceleration = 40f;
     
     private float animationTime;
     private float currentWidth;
@@ -21,6 +24,7 @@ public class Police {
     public Police(float initialWorldX, float initialScreenY) {
         this.x = initialWorldX;
         this.y = initialScreenY;
+        this.currentSpeed = 50f;
         
         runTextures = new Texture[NUM_RUN_FRAMES];
         for (int i = 0; i < NUM_RUN_FRAMES; i++) {
@@ -41,17 +45,16 @@ public class Police {
         animationTime = 0;
     }
 
-    /**
-     * Atualiza a posição e a animação do policial.
-     */
     public void update(float deltaTime) {
-        x += speed * deltaTime; 
+        currentSpeed += acceleration * deltaTime;
+        if (currentSpeed > maxSpeed) {
+            currentSpeed = maxSpeed;
+        }
+
+        x += currentSpeed * deltaTime;
         animationTime += deltaTime;
     }
 
-    /**
-     * Desenha o policial na tela.
-     */
     public void render(SpriteBatch spriteBatch, float cameraOffsetWorldX) {
         int currentFrameIndex = (int)(animationTime / FRAME_DURATION) % NUM_RUN_FRAMES;
         Texture currentFrameTexture = runTextures[currentFrameIndex];
@@ -59,9 +62,6 @@ public class Police {
         spriteBatch.draw(currentFrameTexture, x + cameraOffsetWorldX, y, currentWidth, currentHeight);
     }
 
-    /**
-     * Libera os recursos das texturas do policial.
-     */
     public void dispose() {
         for (Texture texture : runTextures) {
             texture.dispose();
@@ -70,6 +70,10 @@ public class Police {
 
     public float getX() {
         return x;
+    }
+
+    public void setX(float x) {
+        this.x = x;
     }
 
     public float getY() {
@@ -101,6 +105,10 @@ public class Police {
     }
 
     public void setSpeed(float speed) {
-        this.speed = speed;
+        this.currentSpeed = speed;
+    }
+
+    public Rectangle getBounds() {
+        return new Rectangle(x, y, currentWidth, currentHeight);
     }
 }

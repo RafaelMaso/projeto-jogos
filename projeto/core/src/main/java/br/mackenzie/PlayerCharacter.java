@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.math.Rectangle;
 
 public class PlayerCharacter {
     private Texture idleTexture;
@@ -36,10 +37,6 @@ public class PlayerCharacter {
         }
     }
 
-    /**
-     * Atualiza a velocidade e a posição de mundo do jogador.
-     * @param deltaTime O tempo decorrido desde o último frame.
-     */
     public void update(float deltaTime) {
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             currentEffectiveSpeed += accelerationPerTap;
@@ -65,11 +62,6 @@ public class PlayerCharacter {
         }
     }
 
-    /**
-     * Desenha o jogador na tela. A posição X na tela (currentScreenX)
-     * é definida externamente (no Main) para que o scroll da câmera seja gerenciado.
-     * @param spriteBatch O SpriteBatch para desenhar.
-     */
     public void render(SpriteBatch spriteBatch) {
         Texture currentFrameTexture;
         if (isMoving) {
@@ -85,9 +77,6 @@ public class PlayerCharacter {
         spriteBatch.draw(currentFrameTexture, currentScreenX, screenY, textureWidth, textureHeight);
     }
 
-    /**
-     * Libera os recursos das texturas do jogador.
-     */
     public void dispose() {
         idleTexture.dispose();
         for (Texture texture : runTextures) {
@@ -133,5 +122,9 @@ public class PlayerCharacter {
 
     public float getSpeed() {
         return currentEffectiveSpeed;
+    }
+
+    public Rectangle getBounds() {
+        return new Rectangle(worldX, screenY, getWidth(), getHeight());
     }
 }

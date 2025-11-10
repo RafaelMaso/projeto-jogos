@@ -7,6 +7,8 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 
 public class Main implements ApplicationListener {
     SpriteBatch spriteBatch;
@@ -20,10 +22,9 @@ public class Main implements ApplicationListener {
 
     ScoreManager scoreManager;
     BitmapFont font;
+    BitmapFont gameOverFont;
+    boolean gameOver;
 
-    /**
-     * Chamado quando a aplicação é criada. Inicializa recursos e objetos do jogo.
-     */
     @Override
     public void create() {
         spriteBatch = new SpriteBatch();
@@ -33,22 +34,23 @@ public class Main implements ApplicationListener {
         float aspectRatio = (float) backgroundTexture.getWidth() / backgroundTexture.getHeight();
         scaledBackgroundWidth = scaledBackgroundHeight * aspectRatio;
 
-        player = new PlayerCharacter(Gdx.graphics.getWidth() / 4f, 20); 
+        player = new PlayerCharacter(Gdx.graphics.getWidth() / 2f, 20); 
 
-        police = new Police(player.getX() - 200f, 20);
+        police = new Police(player.getX() - 300f, 20);
         police.setHeight(player.getHeight() + 50); 
-        
+
         scoreManager = new ScoreManager(10);
         font = new BitmapFont();
         font.setColor(Color.WHITE);
         font.getData().setScale(2);
+
+        gameOverFont = new BitmapFont();
+        gameOverFont.setColor(Color.RED);
+        gameOverFont.getData().setScale(4);
+
+        gameOver = false;
     }
 
-    /**
-     * Chamado quando a tela é redimensionada.
-     * @param width A nova largura da tela.
-     * @param height A nova altura da tela.
-     */
     @Override
     public void resize(int width, int height) {
         scaledBackgroundHeight = height;
@@ -64,45 +66,53 @@ public class Main implements ApplicationListener {
         }
     }
 
-    /**
-     * Chamado a cada frame para atualizar a lógica do jogo e renderizar os elementos.
-     */
     @Override
     public void render() {
         ScreenUtils.clear(0.2f, 0.2f, 0.8f, 1);
 
         float deltaTime = Gdx.graphics.getDeltaTime();
 
-        player.update(deltaTime); 
-        // Velocidade do policial
-        police.setSpeed(210f); 
-        police.update(deltaTime);
-        scoreManager.update(deltaTime); 
+        if (!gameOver) {
+            player.update(deltaTime); 
+            police.update(deltaTime);
+            scoreManager.update(deltaTime); 
 
-        float playerScreenXRelativeToCamera = player.getX() - worldCameraX; 
+            float playerScreenXRelativeToCamera = player.getX() - worldCameraX; 
 
-        float leftScrollThreshold = Gdx.graphics.getWidth() * 0.2f;
-        float rightScrollThreshold = Gdx.graphics.getWidth() * 0.8f - player.getWidth();
+            float leftScrollThreshold = Gdx.graphics.getWidth() * 0.2f;
+            float rightScrollThreshold = Gdx.graphics.getWidth() * 0.8f - player.getWidth();
 
-        if (playerScreenXRelativeToCamera >= rightScrollThreshold) {
-            worldCameraX = player.getX() - rightScrollThreshold;
-        } 
+            if (playerScreenXRelativeToCamera >= rightScrollThreshold) {
+                worldCameraX = player.getX() - rightScrollThreshold;
+            } 
+            else if (playerScreenXRelativeToCamera <= leftScrollThreshold) {
+                worldCameraX = player.getX() - leftScrollThreshold;
+            }
 
-        else if (playerScreenXRelativeToCamera <= leftScrollThreshold) {
-            worldCameraX = player.getX() - leftScrollThreshold;
-        }
+            if (worldCameraX < 0) {
+                worldCameraX = 0;
+                if (player.getX() < 0) {
+                    player.setX(0);
+                }
+            }
 
-        if (worldCameraX < 0) {
-            worldCameraX = 0;
-            if (player.getX() < 0) {
-                player.setX(0);
+            float clampedPlayerScreenX = player.getX() - worldCameraX; 
+            if (clampedPlayerScreenX < 0) clampedPlayerScreenX = 0; 
+            if (clampedPlayerScreenX > Gdx.graphics.getWidth() - player.getWidth()) clampedPlayerScreenX = Gdx.graphics.getWidth() - player.getWidth();
+            player.setCurrentScreenX(clampedPlayerScreenX);
+
+            float maxDistanceFromPlayer = Gdx.graphics.getWidth() * 0.75f;
+            if (police.getX() < player.getX() - maxDistanceFromPlayer) {
+                police.setX(player.getX() - maxDistanceFromPlayer);
+            }
+
+            Rectangle playerBounds = player.getBounds();
+            Rectangle policeBounds = police.getBounds();
+
+            if (playerBounds.overlaps(policeBounds)) {
+                gameOver = true;
             }
         }
-
-        float clampedPlayerScreenX = player.getX() - worldCameraX; 
-        if (clampedPlayerScreenX < 0) clampedPlayerScreenX = 0; 
-        if (clampedPlayerScreenX > Gdx.graphics.getWidth() - player.getWidth()) clampedPlayerScreenX = Gdx.graphics.getWidth() - player.getWidth(); // Evita sair da tela totalmente à direita
-        player.setCurrentScreenX(clampedPlayerScreenX);
 
         float backgroundDrawOffset = -(worldCameraX % scaledBackgroundWidth);
         if (backgroundDrawOffset > 0) { 
@@ -115,31 +125,30 @@ public class Main implements ApplicationListener {
         spriteBatch.draw(backgroundTexture, backgroundDrawOffset + scaledBackgroundWidth, 0, scaledBackgroundWidth, scaledBackgroundHeight);
         spriteBatch.draw(backgroundTexture, backgroundDrawOffset + scaledBackgroundWidth * 2, 0, scaledBackgroundWidth, scaledBackgroundHeight); 
 
-        player.render(spriteBatch);
-        police.render(spriteBatch, -worldCameraX); 
-
-        font.draw(spriteBatch, "Score: " + scoreManager.getScore(), 10, Gdx.graphics.getHeight() - 10);
-
+        if (gameOver) {
+            String gameOverText = "GAME OVER!";
+            GlyphLayout layout = new GlyphLayout(gameOverFont, gameOverText);
+            float x = (Gdx.graphics.getWidth() - layout.width) / 2;
+            float y = (Gdx.graphics.getHeight() + layout.height) / 2;
+            gameOverFont.draw(spriteBatch, gameOverText, x, y);
+        } else {
+            player.render(spriteBatch);
+            police.render(spriteBatch, -worldCameraX); 
+            font.draw(spriteBatch, "Score: " + scoreManager.getScore(), 10, Gdx.graphics.getHeight() - 10);
+        }
+        
         spriteBatch.end();
     }
 
-    /**
-     * Chamado quando a aplicação é pausada.
-     */
     @Override
     public void pause() {
     }
 
-    /**
-     * Chamado quando a aplicação é resumida após uma pausa.
-     */
     @Override
     public void resume() {
     }
 
-    /**
-     * Chamado quando a aplicação está sendo encerrada. Libera todos os recursos.
-     */
+
     @Override
     public void dispose() {
         spriteBatch.dispose();
@@ -147,5 +156,6 @@ public class Main implements ApplicationListener {
         player.dispose();
         police.dispose();
         font.dispose();
+        gameOverFont.dispose();
     }
 }
