@@ -14,8 +14,7 @@ public class Main implements ApplicationListener {
     Police police;
     Texture backgroundTexture;
 
-    float backgroundScrollX = 0; 
-
+    float worldCameraX = 0;
     float scaledBackgroundWidth;
     float scaledBackgroundHeight;
 
@@ -28,18 +27,16 @@ public class Main implements ApplicationListener {
     @Override
     public void create() {
         spriteBatch = new SpriteBatch();
-
         backgroundTexture = new Texture("city1.png");
 
         scaledBackgroundHeight = Gdx.graphics.getHeight();
         float aspectRatio = (float) backgroundTexture.getWidth() / backgroundTexture.getHeight();
         scaledBackgroundWidth = scaledBackgroundHeight * aspectRatio;
 
-        player = new PlayerCharacter(Gdx.graphics.getWidth() / 4f, 20);
+        player = new PlayerCharacter(Gdx.graphics.getWidth() / 4f, 20); 
 
         police = new Police(player.getX() - 200f, 20);
-        // Define a altura do policial igual à altura do jogador
-        police.setHeight(player.getHeight()); 
+        police.setHeight(player.getHeight() + 50); 
         
         scoreManager = new ScoreManager(10);
         font = new BitmapFont();
@@ -60,13 +57,9 @@ public class Main implements ApplicationListener {
 
         if (player != null) {
             player.setY(20); 
-            if (player.getX() > width - player.getWidth()) {
-                player.setX(width - player.getWidth());
-            }
         }
         if (police != null) {
             police.setY(20); 
-            // Atualiza a altura do policial para corresponder à do jogador novamente
             police.setHeight(player.getHeight() + 50); 
         }
     }
@@ -81,54 +74,49 @@ public class Main implements ApplicationListener {
         float deltaTime = Gdx.graphics.getDeltaTime();
 
         player.update(deltaTime); 
+        // Velocidade do policial
+        police.setSpeed(210f); 
         police.update(deltaTime);
         scoreManager.update(deltaTime); 
 
-        float playerRequestedDeltaX = player.getDeltaXThisFrame();
+        float playerScreenXRelativeToCamera = player.getX() - worldCameraX; 
 
-        float playerScreenMoveX = playerRequestedDeltaX; 
-        float backgroundScrollDelta = 0; 
+        float leftScrollThreshold = Gdx.graphics.getWidth() * 0.2f;
+        float rightScrollThreshold = Gdx.graphics.getWidth() * 0.8f - player.getWidth();
 
-        float screenWidth = Gdx.graphics.getWidth();
-        float playerXOnScreen = player.getX();
+        if (playerScreenXRelativeToCamera >= rightScrollThreshold) {
+            worldCameraX = player.getX() - rightScrollThreshold;
+        } 
 
-        float rightScrollThreshold = screenWidth * 0.8f - player.getWidth(); 
+        else if (playerScreenXRelativeToCamera <= leftScrollThreshold) {
+            worldCameraX = player.getX() - leftScrollThreshold;
+        }
 
-        if (playerRequestedDeltaX > 0) { 
-            if (playerXOnScreen >= rightScrollThreshold) {
-                playerScreenMoveX = 0; 
-                backgroundScrollDelta = -playerRequestedDeltaX; 
-            } else if (playerXOnScreen + playerRequestedDeltaX > rightScrollThreshold) {
-                playerScreenMoveX = rightScrollThreshold - playerXOnScreen;
-                backgroundScrollDelta = -(playerRequestedDeltaX - playerScreenMoveX);
+        if (worldCameraX < 0) {
+            worldCameraX = 0;
+            if (player.getX() < 0) {
+                player.setX(0);
             }
         }
 
-        player.setX(playerXOnScreen + playerScreenMoveX);
-        backgroundScrollX += backgroundScrollDelta;
+        float clampedPlayerScreenX = player.getX() - worldCameraX; 
+        if (clampedPlayerScreenX < 0) clampedPlayerScreenX = 0; 
+        if (clampedPlayerScreenX > Gdx.graphics.getWidth() - player.getWidth()) clampedPlayerScreenX = Gdx.graphics.getWidth() - player.getWidth(); // Evita sair da tela totalmente à direita
+        player.setCurrentScreenX(clampedPlayerScreenX);
 
-        if (player.getX() < 0) {
-            player.setX(0);
-        }
-        if (player.getX() > screenWidth - player.getWidth()) {
-            player.setX(screenWidth - player.getWidth());
-        }
-
-        while (backgroundScrollX <= -scaledBackgroundWidth) {
-            backgroundScrollX += scaledBackgroundWidth;
-        }
-        while (backgroundScrollX >= scaledBackgroundWidth) {
-            backgroundScrollX -= scaledBackgroundWidth;
+        float backgroundDrawOffset = -(worldCameraX % scaledBackgroundWidth);
+        if (backgroundDrawOffset > 0) { 
+            backgroundDrawOffset -= scaledBackgroundWidth;
         }
 
         spriteBatch.begin();
 
-        spriteBatch.draw(backgroundTexture, backgroundScrollX, 0, scaledBackgroundWidth, scaledBackgroundHeight);
-        spriteBatch.draw(backgroundTexture, backgroundScrollX + scaledBackgroundWidth, 0, scaledBackgroundWidth, scaledBackgroundHeight);
-        spriteBatch.draw(backgroundTexture, backgroundScrollX - scaledBackgroundWidth, 0, scaledBackgroundWidth, scaledBackgroundHeight);
+        spriteBatch.draw(backgroundTexture, backgroundDrawOffset, 0, scaledBackgroundWidth, scaledBackgroundHeight);
+        spriteBatch.draw(backgroundTexture, backgroundDrawOffset + scaledBackgroundWidth, 0, scaledBackgroundWidth, scaledBackgroundHeight);
+        spriteBatch.draw(backgroundTexture, backgroundDrawOffset + scaledBackgroundWidth * 2, 0, scaledBackgroundWidth, scaledBackgroundHeight); 
 
         player.render(spriteBatch);
-        police.render(spriteBatch, backgroundScrollX);
+        police.render(spriteBatch, -worldCameraX); 
 
         font.draw(spriteBatch, "Score: " + scoreManager.getScore(), 10, Gdx.graphics.getHeight() - 10);
 

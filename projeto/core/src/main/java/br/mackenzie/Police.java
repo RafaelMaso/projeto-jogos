@@ -43,26 +43,20 @@ public class Police {
 
     /**
      * Atualiza a posição e a animação do policial.
-     * @param deltaTime O tempo decorrido desde o último frame.
      */
     public void update(float deltaTime) {
-        x += speed * deltaTime;
+        x += speed * deltaTime; 
         animationTime += deltaTime;
     }
 
     /**
      * Desenha o policial na tela.
-     * O backgroundScrollX é usado para traduzir a posição do mundo do policial para a posição correta na tela,
-     * fazendo com que ele se mova junto com o scroll do cenário.
-     * @param spriteBatch O SpriteBatch para desenhar.
-     * @param backgroundScrollX O deslocamento X do background.
      */
-    public void render(SpriteBatch spriteBatch, float backgroundScrollX) {
+    public void render(SpriteBatch spriteBatch, float cameraOffsetWorldX) {
         int currentFrameIndex = (int)(animationTime / FRAME_DURATION) % NUM_RUN_FRAMES;
         Texture currentFrameTexture = runTextures[currentFrameIndex];
 
-        // Usa as dimensões atuais (escaladas) para desenhar
-        spriteBatch.draw(currentFrameTexture, x + backgroundScrollX, y, currentWidth, currentHeight);
+        spriteBatch.draw(currentFrameTexture, x + cameraOffsetWorldX, y, currentWidth, currentHeight);
     }
 
     /**
@@ -82,35 +76,18 @@ public class Police {
         return y;
     }
 
-    /**
-     * Define a posição Y do policial.
-     * @param y A nova coordenada Y.
-     */
     public void setY(float y) {
         this.y = y;
     }
 
-    /**
-     * Retorna a largura atual do policial.
-     * @return A largura do policial.
-     */
     public float getWidth() {
         return currentWidth;
     }
 
-    /**
-     * Retorna a altura atual do policial.
-     * @return A altura do policial.
-     */
     public float getHeight() {
         return currentHeight;
     }
 
-    /**
-     * Define a altura do policial e ajusta a largura proporcionalmente
-     * para manter a proporção da imagem original.
-     * @param newHeight A nova altura desejada.
-     */
     public void setHeight(float newHeight) {
         if (originalAspectRatio > 0 && newHeight > 0) { 
             this.currentHeight = newHeight;
@@ -121,5 +98,9 @@ public class Police {
                  this.currentWidth = newHeight; 
             }
         }
+    }
+
+    public void setSpeed(float speed) {
+        this.speed = speed;
     }
 }

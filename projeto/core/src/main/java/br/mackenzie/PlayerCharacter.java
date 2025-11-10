@@ -11,41 +11,43 @@ public class PlayerCharacter {
     private static final int NUM_RUN_FRAMES = 8;
     private static final float FRAME_DURATION = 0.1f; 
 
-    private float x; 
-    private float y;
-
+    private float worldX; 
+    private float screenY;
+    private float currentScreenX;
     private float currentEffectiveSpeed = 0f; 
     private float maxSpeed = 350f;
-    private float accelerationPerTap = 100f; // Quanto de velocidade é adicionado por cada toque na barra de espaço
-    private float decelerationRate = 100f;  // Quanto de velocidade é perdido por segundo (desaceleração natural)
+    private float accelerationPerTap = 100f;
+    private float decelerationRate = 100f;
 
     private float animationTime; 
     private boolean isMoving;  
 
-    private float deltaXThisFrame; 
+    private float deltaWorldXThisFrame;
 
-    public PlayerCharacter(float initialX, float initialY) {
-        this.x = initialX;
-        this.y = initialY;
+    public PlayerCharacter(float initialWorldX, float initialScreenY) {
+        this.worldX = initialWorldX;
+        this.screenY = initialScreenY;
+        this.currentScreenX = initialWorldX;
 
         idleTexture = new Texture("character.png");
         runTextures = new Texture[NUM_RUN_FRAMES];
         for (int i = 0; i < NUM_RUN_FRAMES; i++) {
-            runTextures[i] = new Texture("characterRun/run" + (i + 1) + ".png");
+            runTextures[i] = new Texture(Gdx.files.internal("characterRun/run" + (i + 1) + ".png"));
         }
     }
 
+    /**
+     * Atualiza a velocidade e a posição de mundo do jogador.
+     * @param deltaTime O tempo decorrido desde o último frame.
+     */
     public void update(float deltaTime) {
-        // Acelera o personagem se a barra de espaço for pressionada (apenas um toque)
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             currentEffectiveSpeed += accelerationPerTap;
-            // Limita a velocidade máxima
             if (currentEffectiveSpeed > maxSpeed) {
                 currentEffectiveSpeed = maxSpeed;
             }
         }
 
-        // Desacelera o personagem naturalmente ao longo do tempo
         currentEffectiveSpeed -= decelerationRate * deltaTime;
         if (currentEffectiveSpeed < 0) {
             currentEffectiveSpeed = 0;
@@ -53,7 +55,8 @@ public class PlayerCharacter {
 
         isMoving = currentEffectiveSpeed > 0.1f;
 
-        deltaXThisFrame = currentEffectiveSpeed * deltaTime;
+        deltaWorldXThisFrame = currentEffectiveSpeed * deltaTime; 
+        worldX += deltaWorldXThisFrame;
 
         if (isMoving) {
             animationTime += deltaTime * (currentEffectiveSpeed / (maxSpeed / 2f));
@@ -62,6 +65,11 @@ public class PlayerCharacter {
         }
     }
 
+    /**
+     * Desenha o jogador na tela. A posição X na tela (currentScreenX)
+     * é definida externamente (no Main) para que o scroll da câmera seja gerenciado.
+     * @param spriteBatch O SpriteBatch para desenhar.
+     */
     public void render(SpriteBatch spriteBatch) {
         Texture currentFrameTexture;
         if (isMoving) {
@@ -74,9 +82,12 @@ public class PlayerCharacter {
         float textureWidth = currentFrameTexture.getWidth();
         float textureHeight = currentFrameTexture.getHeight();
 
-        spriteBatch.draw(currentFrameTexture, x, y, textureWidth, textureHeight);
+        spriteBatch.draw(currentFrameTexture, currentScreenX, screenY, textureWidth, textureHeight);
     }
 
+    /**
+     * Libera os recursos das texturas do jogador.
+     */
     public void dispose() {
         idleTexture.dispose();
         for (Texture texture : runTextures) {
@@ -85,19 +96,27 @@ public class PlayerCharacter {
     }
 
     public float getX() {
-        return x;
+        return worldX;
     }
 
     public float getY() {
-        return y;
+        return screenY;
     }
 
-    public void setX(float x) {
-        this.x = x;
+    public void setX(float worldX) {
+        this.worldX = worldX;
     }
 
     public void setY(float y) {
-        this.y = y;
+        this.screenY = y;
+    }
+
+    public float getCurrentScreenX() {
+        return currentScreenX;
+    }
+
+    public void setCurrentScreenX(float currentScreenX) {
+        this.currentScreenX = currentScreenX;
     }
 
     public float getWidth() {
@@ -109,7 +128,7 @@ public class PlayerCharacter {
     }
 
     public float getDeltaXThisFrame() {
-        return deltaXThisFrame;
+        return deltaWorldXThisFrame;
     }
 
     public float getSpeed() {
