@@ -30,7 +30,13 @@ public class Main implements ApplicationListener {
     private static final float POLICE_MAX_DISTANCE_FROM_PLAYER_PERCENT = 0.75f;
     private static final String GAME_OVER_TEXT = "GAME OVER!";
     private static final float DEFAULT_ENTITY_Y_POSITION = 20f;
+    private static final String START_SCREEN_IMAGE_PATH = "home-screen.png";
+    private static final float START_SCREEN_DISPLAY_TIME = 5f;
 
+    // --- Home Screen ---
+    private Texture startScreenTexture;
+    private float startScreenTimer;
+    private boolean showStartScreen = true;
 
     // --- Recursos Gráficos e Entidades ---
     private SpriteBatch spriteBatch;
@@ -47,12 +53,18 @@ public class Main implements ApplicationListener {
     private ScoreManager scoreManager;
     private BitmapFont scoreFont;
     private BitmapFont gameOverFont;
-    private GlyphLayout gameOverLayout; 
+    private GlyphLayout gameOverLayout;
     private boolean isGameOver;
 
     @Override
     public void create() {
         spriteBatch = new SpriteBatch();
+
+        // Carrega a tela inicial
+        startScreenTexture = new Texture(START_SCREEN_IMAGE_PATH);
+        startScreenTimer = 0;
+        showStartScreen = true;
+
         backgroundTexture = new Texture(BACKGROUND_IMAGE_PATH);
 
         // Calcula a largura do fundo para manter a proporção da imagem original
@@ -74,7 +86,7 @@ public class Main implements ApplicationListener {
         gameOverFont = new BitmapFont();
         gameOverFont.setColor(FONT_GAME_OVER_COLOR);
         gameOverFont.getData().setScale(FONT_GAME_OVER_SCALE);
-        gameOverLayout = new GlyphLayout(gameOverFont, GAME_OVER_TEXT); 
+        gameOverLayout = new GlyphLayout(gameOverFont, GAME_OVER_TEXT);
 
         isGameOver = false;
     }
@@ -105,6 +117,22 @@ public class Main implements ApplicationListener {
         ScreenUtils.clear(BACKGROUND_CLEAR_RED, BACKGROUND_CLEAR_GREEN, BACKGROUND_CLEAR_BLUE, BACKGROUND_CLEAR_ALPHA);
 
         float deltaTime = Gdx.graphics.getDeltaTime();
+
+        // Lógica da tela inicial
+        if (showStartScreen) {
+            startScreenTimer += deltaTime;
+
+            // Pula a tela inicial se o tempo passar ou o jogador clicar/tocar
+            if (startScreenTimer >= START_SCREEN_DISPLAY_TIME || Gdx.input.isTouched()) {
+                showStartScreen = false;
+            }
+
+            // Desenha apenas a tela inicial
+            spriteBatch.begin();
+            spriteBatch.draw(startScreenTexture, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+            spriteBatch.end();
+            return; // Sai do metodo sem executar o jogo
+        }
 
         if (!isGameOver) {
             // Atualiza o estado do jogo se não for Game Over
@@ -231,6 +259,11 @@ public class Main implements ApplicationListener {
     @Override
     public void dispose() {
         spriteBatch.dispose();
+
+        if (startScreenTexture != null) {
+            startScreenTexture.dispose();
+        }
+
         backgroundTexture.dispose();
         player.dispose();
         police.dispose();
