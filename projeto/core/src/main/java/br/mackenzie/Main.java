@@ -9,6 +9,8 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.Input;
 
 public class Main implements ApplicationListener {
     // --- Constantes do Jogo ---
@@ -32,6 +34,18 @@ public class Main implements ApplicationListener {
     private static final float DEFAULT_ENTITY_Y_POSITION = 20f;
     private static final String START_SCREEN_IMAGE_PATH = "home-screen.png";
     private static final float START_SCREEN_DISPLAY_TIME = 5f;
+    private static final String PAUSE_TEXT = "JOGO PAUSADO";
+    private static final String RESUME_TEXT = "Continuar (ESC)";
+    private static final String RESTART_TEXT = "Reiniciar (R)";
+    private static final String EXIT_TEXT = "Sair (S)";
+    private static final Color PAUSE_BG_COLOR = new Color(0f, 0f, 0f, 0.6f); // Fundo semi-transparente
+    private boolean isPaused = false;
+    private BitmapFont pauseFont;
+    private BitmapFont menuFont;
+    private GlyphLayout pauseLayout;
+    private GlyphLayout resumeLayout;
+    private GlyphLayout restartLayout;
+    private GlyphLayout exitLayout;
 
     // --- Home Screen ---
     private Texture startScreenTexture;
@@ -88,6 +102,20 @@ public class Main implements ApplicationListener {
         gameOverFont.getData().setScale(FONT_GAME_OVER_SCALE);
         gameOverLayout = new GlyphLayout(gameOverFont, GAME_OVER_TEXT);
 
+        // Inicializa fontes do pause
+        pauseFont = new BitmapFont();
+        pauseFont.setColor(Color.YELLOW);
+        pauseFont.getData().setScale(4f);
+
+        menuFont = new BitmapFont();
+        menuFont.setColor(Color.WHITE);
+        menuFont.getData().setScale(2f);
+
+        pauseLayout = new GlyphLayout(pauseFont, PAUSE_TEXT);
+        resumeLayout = new GlyphLayout(menuFont, RESUME_TEXT);
+        restartLayout = new GlyphLayout(menuFont, RESTART_TEXT);
+        exitLayout = new GlyphLayout(menuFont, EXIT_TEXT);
+
         isGameOver = false;
     }
 
@@ -118,24 +146,35 @@ public class Main implements ApplicationListener {
 
         float deltaTime = Gdx.graphics.getDeltaTime();
 
-        // Lógica da tela inicial
+        // === LÓGICA DA TELA INICIAL ===
         if (showStartScreen) {
             startScreenTimer += deltaTime;
 
-            // Pula a tela inicial se o tempo passar ou o jogador clicar/tocar
             if (startScreenTimer >= START_SCREEN_DISPLAY_TIME || Gdx.input.isTouched()) {
                 showStartScreen = false;
             }
 
-            // Desenha apenas a tela inicial
             spriteBatch.begin();
             spriteBatch.draw(startScreenTexture, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
             spriteBatch.end();
-            return; // Sai do metodo sem executar o jogo
+            return;
         }
 
+        if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.ESCAPE)) {
+            isPaused = !isPaused; // Alterna entre pausado e não pausado
+        }
+
+        // === SE O JOGO ESTIVER PAUSADO ===
+        if (isPaused) {
+            drawPauseScreen();
+
+            // Verifica cliques nos botões do menu de pause
+            checkPauseMenuInput();
+            return; // Sai do render sem atualizar o jogo
+        }
+
+        // === SE O JOGO NÃO ESTIVER PAUSADO (SEU CÓDIGO ORIGINAL) ===
         if (!isGameOver) {
-            // Atualiza o estado do jogo se não for Game Over
             player.update(deltaTime);
             police.update(deltaTime);
             scoreManager.update(deltaTime);
@@ -151,6 +190,116 @@ public class Main implements ApplicationListener {
         drawGameElements(spriteBatch);
         drawUI(spriteBatch);
         spriteBatch.end();
+    }
+
+    /**
+     * Desenha a tela de pause com opções de menu
+     */
+    private void drawPauseScreen() {
+        // Primeiro desenha o jogo congelado
+        spriteBatch.begin();
+        drawBackground();
+        drawGameElements(spriteBatch);
+        drawUI(spriteBatch);
+
+        // Desenha overlay escuro semi-transparente
+        spriteBatch.setColor(PAUSE_BG_COLOR);
+        spriteBatch.draw(whitePixelTexture(), 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        spriteBatch.setColor(Color.WHITE);
+
+        // Desenha texto "JOGO PAUSADO"
+        float pauseX = (Gdx.graphics.getWidth() - pauseLayout.width) / 2;
+        float pauseY = Gdx.graphics.getHeight() * 0.7f;
+        pauseFont.draw(spriteBatch, pauseLayout, pauseX, pauseY);
+
+        // Desenha opções do menu
+        float resumeX = (Gdx.graphics.getWidth() - resumeLayout.width) / 2;
+        float resumeY = Gdx.graphics.getHeight() * 0.55f;  // Ajustei as posições
+        menuFont.draw(spriteBatch, resumeLayout, resumeX, resumeY);
+
+        float restartX = (Gdx.graphics.getWidth() - restartLayout.width) / 2;
+        float restartY = Gdx.graphics.getHeight() * 0.45f; // Ajustei as posições
+        menuFont.draw(spriteBatch, restartLayout, restartX, restartY);
+
+        // NOVA: Opção Sair do Jogo
+        float exitX = (Gdx.graphics.getWidth() - exitLayout.width) / 2;
+        float exitY = Gdx.graphics.getHeight() * 0.35f;    // Nova posição
+        menuFont.draw(spriteBatch, exitLayout, exitX, exitY);
+
+        spriteBatch.end();
+    }
+
+    // Cria uma textura branca 1x1 para o overlay
+    private Texture whitePixelTexture() {
+        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pixmap.setColor(Color.WHITE);
+        pixmap.fill();
+        Texture texture = new Texture(pixmap);
+        pixmap.dispose();
+        return texture;
+    }
+
+    private void checkPauseMenuInput() {
+        // Tecla R - Reiniciar jogo
+        if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.R)) {
+            restartGame();
+        }
+
+        // Tecla S - Sair do jogo (QUANDO ESTIVER PAUSADO)
+        if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.S)) {
+            exitGame();
+        }
+
+        // Clique do mouse nas opções
+        if (Gdx.input.isButtonJustPressed(com.badlogic.gdx.Input.Buttons.LEFT)) {
+            float touchX = Gdx.input.getX();
+            float touchY = Gdx.graphics.getHeight() - Gdx.input.getY(); // Inverte Y
+
+            float resumeY = Gdx.graphics.getHeight() * 0.55f;   // Ajustado
+            float restartY = Gdx.graphics.getHeight() * 0.45f;  // Ajustado
+            float exitY = Gdx.graphics.getHeight() * 0.35f;     // Ajustado
+            float menuHeight = 30; // Altura aproximada do texto
+
+            // Verifica clique em "Continuar"
+            if (touchY >= resumeY - menuHeight && touchY <= resumeY + menuHeight) {
+                isPaused = false;
+            }
+
+            // Verifica clique em "Reiniciar"
+            if (touchY >= restartY - menuHeight && touchY <= restartY + menuHeight) {
+                restartGame();
+            }
+
+            // NOVA: Verifica clique em "Sair do Jogo"
+            if (touchY >= exitY - menuHeight && touchY <= exitY + menuHeight) {
+                exitGame();
+            }
+        }
+    }
+
+    /**
+     * Sai do jogo
+     */
+    private void exitGame() {
+        Gdx.app.exit(); // Fecha a aplicação
+    }
+
+    /**
+     * Reinicia o jogo para o estado inicial
+     */
+    private void restartGame() {
+        // Reseta variáveis do jogo
+        isGameOver = false;
+        isPaused = false;
+        worldCameraX = 0;
+
+        // Recria os personagens
+        player = new PlayerCharacter(Gdx.graphics.getWidth() / 2f, PLAYER_INITIAL_Y);
+        police = new Police(player.getX() - POLICE_INITIAL_OFFSET_X, PLAYER_INITIAL_Y);
+        police.setHeight(player.getHeight() + POLICE_HEIGHT_OFFSET);
+
+        // Reseta a pontuação
+        scoreManager = new ScoreManager(SCORE_MANAGER_INITIAL_INTERVAL);
     }
 
     /**
@@ -269,5 +418,9 @@ public class Main implements ApplicationListener {
         police.dispose();
         scoreFont.dispose();
         gameOverFont.dispose();
+
+        // Novas fontes do pause
+        pauseFont.dispose();
+        menuFont.dispose();
     }
 }
