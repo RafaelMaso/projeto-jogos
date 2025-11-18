@@ -24,6 +24,8 @@ public class Main implements ApplicationListener {
     private static final Color FONT_GAME_OVER_COLOR = Color.RED;
     private static final Color VICTORY_COLOR = Color.GREEN;
     private static final Color PAUSE_BG_COLOR = new Color(0f, 0f, 0f, 0.6f);
+    private static final float ENTITY_STANDARD_WIDTH = 115f;
+    private static final float ENTITY_STANDARD_HEIGHT = 125f;
 
     // Textos
     private static final String GAME_OVER_TEXT = "GAME OVER!";
@@ -272,6 +274,9 @@ public class Main implements ApplicationListener {
 
         backgroundTexture = new Texture(BACKGROUND_PATHS[currentPhase]);
         gameSpeedMultiplier = PHASE_SPEED_MULTIPLIERS[currentPhase];
+
+        police.setPhase(currentPhase);
+
         updateBackgroundSize();
 
         worldCameraX = 0;
@@ -285,7 +290,7 @@ public class Main implements ApplicationListener {
     private void updateCameraAndPlayerScreenPosition() {
         float playerScreenX = player.getX() - worldCameraX;
         float leftThreshold = Gdx.graphics.getWidth() * CAMERA_SCROLL_THRESHOLD_LEFT_PERCENT;
-        float rightThreshold = Gdx.graphics.getWidth() * CAMERA_SCROLL_THRESHOLD_RIGHT_PERCENT - player.getWidth();
+        float rightThreshold = Gdx.graphics.getWidth() * CAMERA_SCROLL_THRESHOLD_RIGHT_PERCENT - ENTITY_STANDARD_WIDTH; // Usa largura padrão
 
         if (playerScreenX >= rightThreshold) {
             worldCameraX = player.getX() - rightThreshold;
@@ -299,7 +304,7 @@ public class Main implements ApplicationListener {
         }
 
         float clampedScreenX = player.getX() - worldCameraX;
-        clampedScreenX = Math.max(0, Math.min(Gdx.graphics.getWidth() - player.getWidth(), clampedScreenX));
+        clampedScreenX = Math.max(0, Math.min(Gdx.graphics.getWidth() - ENTITY_STANDARD_WIDTH, clampedScreenX)); // Usa largura padrão
         player.setCurrentScreenX(clampedScreenX);
     }
 

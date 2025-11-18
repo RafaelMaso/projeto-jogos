@@ -18,6 +18,10 @@ public class PlayerCharacter {
     private static final float DECELERATION_RATE = 100f;
     private static final float MOVING_THRESHOLD = 0.1f;
 
+    // TAMANHO PADRÃO FIXO PARA TODOS
+    private static final float STANDARD_WIDTH = 90f;
+    private static final float STANDARD_HEIGHT = 80f;
+
     // --- Recursos Gráficos ---
     private Texture idleTexture;
     private Texture[] runTextures;
@@ -52,35 +56,24 @@ public class PlayerCharacter {
         isMoving = false;
     }
 
-    /**
-     * Atualiza o estado do personagem a cada frame.
-     * @param deltaTime O tempo decorrido desde o último frame.
-     */
     public void update(float deltaTime) {
-        // Verifica a entrada do usuário para aceleração
         if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
             currentEffectiveSpeed += ACCELERATION_PER_TAP;
-            // Limita a velocidade máxima
             if (currentEffectiveSpeed > MAX_SPEED) {
                 currentEffectiveSpeed = MAX_SPEED;
             }
         }
 
-        // Aplica desaceleração constante
         currentEffectiveSpeed -= DECELERATION_RATE * deltaTime;
-        // Garante que a velocidade não seja negativa
         if (currentEffectiveSpeed < 0) {
             currentEffectiveSpeed = 0;
         }
 
-        // Define o estado de movimento com base na velocidade
         isMoving = currentEffectiveSpeed > MOVING_THRESHOLD;
 
-        // Calcula o deslocamento do personagem no mundo
         deltaWorldXThisFrame = currentEffectiveSpeed * deltaTime;
         worldX += deltaWorldXThisFrame;
 
-        // Atualiza o tempo de animação apenas se estiver se movendo
         if (isMoving) {
             animationTime += deltaTime * (currentEffectiveSpeed / (MAX_SPEED / 2f));
         } else {
@@ -88,27 +81,19 @@ public class PlayerCharacter {
         }
     }
 
-    /**
-     * Desenha o personagem na tela.
-     * @param spriteBatch O SpriteBatch usado para desenhar.
-     */
     public void render(SpriteBatch spriteBatch) {
         Texture currentFrameTexture;
         if (isMoving) {
-            // Calcula o índice do frame da animação de corrida
             int currentFrameIndex = (int)(animationTime / FRAME_DURATION) % NUM_RUN_FRAMES;
             currentFrameTexture = runTextures[currentFrameIndex];
         } else {
-            currentFrameTexture = idleTexture; // Usa a textura parada
+            currentFrameTexture = idleTexture;
         }
 
-        // Desenha o frame na posição de tela calculada
-        spriteBatch.draw(currentFrameTexture, currentScreenX, screenY, currentFrameTexture.getWidth(), currentFrameTexture.getHeight());
+        // TAMANHO FIXO - IGNORA TAMANHO ORIGINAL DA TEXTURA
+        spriteBatch.draw(currentFrameTexture, currentScreenX, screenY, STANDARD_WIDTH, STANDARD_HEIGHT);
     }
 
-    /**
-     * Libera as texturas alocadas.
-     */
     public void dispose() {
         idleTexture.dispose();
         for (Texture texture : runTextures) {
@@ -118,63 +103,22 @@ public class PlayerCharacter {
         }
     }
 
-    // --- Getters e Setters ---
-    public float getX() {
-        return worldX;
-    }
+    public float getX() { return worldX; }
+    public void setX(float worldX) { this.worldX = worldX; }
+    public float getY() { return screenY; }
+    public void setY(float y) { this.screenY = y; }
+    public float getCurrentScreenX() { return currentScreenX; }
+    public void setCurrentScreenX(float currentScreenX) { this.currentScreenX = currentScreenX; }
 
-    public void setX(float worldX) {
-        this.worldX = worldX;
-    }
+    // SEMPRE RETORNA TAMANHO PADRÃO
+    public float getWidth() { return STANDARD_WIDTH; }
+    public float getHeight() { return STANDARD_HEIGHT; }
 
-    public float getY() {
-        return screenY;
-    }
+    public float getDeltaXThisFrame() { return deltaWorldXThisFrame; }
+    public float getSpeed() { return currentEffectiveSpeed; }
 
-    public void setY(float y) {
-        this.screenY = y;
-    }
-
-    public float getCurrentScreenX() {
-        return currentScreenX;
-    }
-
-    public void setCurrentScreenX(float currentScreenX) {
-        this.currentScreenX = currentScreenX;
-    }
-
-    /**
-     * Retorna a largura atual do sprite do jogador.
-     */
-    public float getWidth() {
-        if (isMoving && runTextures.length > 0 && runTextures[0] != null) {
-            return runTextures[0].getWidth();
-        }
-        return idleTexture.getWidth();
-    }
-
-    /**
-     * Retorna a altura atual do sprite do jogador.
-     */
-    public float getHeight() {
-        if (isMoving && runTextures.length > 0 && runTextures[0] != null) {
-            return runTextures[0].getHeight();
-        }
-        return idleTexture.getHeight();
-    }
-
-    public float getDeltaXThisFrame() {
-        return deltaWorldXThisFrame;
-    }
-
-    public float getSpeed() {
-        return currentEffectiveSpeed;
-    }
-
-    /**
-     * Retorna a caixa de colisão do jogador em coordenadas de mundo.
-     */
+    // SEMPRE USA TAMANHO PADRÃO
     public Rectangle getBounds() {
-        return new Rectangle(worldX, screenY, getWidth(), getHeight());
+        return new Rectangle(worldX, screenY, STANDARD_WIDTH, STANDARD_HEIGHT);
     }
 }
