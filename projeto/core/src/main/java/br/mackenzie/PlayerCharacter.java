@@ -20,7 +20,7 @@ public class PlayerCharacter {
 
     // TAMANHO PADRÃO FIXO PARA TODOS
     private static final float STANDARD_WIDTH = 90f;
-    private static final float STANDARD_HEIGHT = 80f;
+    private static final float STANDARD_HEIGHT = 120f;
 
     // --- Recursos Gráficos ---
     private Texture idleTexture;
