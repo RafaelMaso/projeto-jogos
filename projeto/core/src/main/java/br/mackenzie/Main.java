@@ -10,7 +10,6 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.graphics.Pixmap;
-import com.badlogic.gdx.Input;
 
 public class Main implements ApplicationListener {
     // --- Constantes do Jogo ---
@@ -18,10 +17,8 @@ public class Main implements ApplicationListener {
     private static final float BACKGROUND_CLEAR_GREEN = 0.2f;
     private static final float BACKGROUND_CLEAR_BLUE = 0.8f;
     private static final float BACKGROUND_CLEAR_ALPHA = 1.0f;
-    private static final String BACKGROUND_IMAGE_PATH = "city1.png";
     private static final float PLAYER_INITIAL_Y = 20f;
     private static final float POLICE_INITIAL_OFFSET_X = 300f;
-    private static final float POLICE_HEIGHT_OFFSET = 50f;
     private static final int SCORE_MANAGER_INITIAL_INTERVAL = 10;
     private static final float FONT_SCORE_SCALE = 2f;
     private static final float FONT_GAME_OVER_SCALE = 4f;
@@ -38,61 +35,74 @@ public class Main implements ApplicationListener {
     private static final String RESUME_TEXT = "Continuar (ESC)";
     private static final String RESTART_TEXT = "Reiniciar (R)";
     private static final String EXIT_TEXT = "Sair (S)";
-    private static final Color PAUSE_BG_COLOR = new Color(0f, 0f, 0f, 0.6f); // Fundo semi-transparente
+    private static final Color PAUSE_BG_COLOR = new Color(0f, 0f, 0f, 0.6f);
+
+    // --- Sistema de Fases ---
+    private static final String[] BACKGROUND_PATHS = {
+        "city1.png",     // Fase 1
+        "city2.png",     // Fase 2
+        "city3.png"      // Fase 3
+    };
+    private static final float[] PHASE_SPEED_MULTIPLIERS = {1.0f, 1.2f, 1.4f};
+    private static final int[] PHASE_SCORE_THRESHOLDS = {100, 300, 600};
+
+    // --- Variáveis do Jogo ---
     private boolean isPaused = false;
+    private boolean isGameOver = false;
+    private boolean showStartScreen = true;
+    private int currentPhase = 0;
+    private float gameSpeedMultiplier = 1.0f;
+    private float worldCameraX = 0;
+    private float scaledBackgroundWidth;
+    private float scaledBackgroundHeight;
+    private float startScreenTimer;
+
+    // --- Recursos Gráficos ---
+    private SpriteBatch spriteBatch;
+    private Texture startScreenTexture;
+    private Texture backgroundTexture;
+    private PlayerCharacter player;
+    private Police police;
+
+    // --- UI ---
+    private ScoreManager scoreManager;
+    private BitmapFont scoreFont;
+    private BitmapFont gameOverFont;
     private BitmapFont pauseFont;
     private BitmapFont menuFont;
+    private GlyphLayout gameOverLayout;
     private GlyphLayout pauseLayout;
     private GlyphLayout resumeLayout;
     private GlyphLayout restartLayout;
     private GlyphLayout exitLayout;
 
-    // --- Home Screen ---
-    private Texture startScreenTexture;
-    private float startScreenTimer;
-    private boolean showStartScreen = true;
-
-    // --- Recursos Gráficos e Entidades ---
-    private SpriteBatch spriteBatch;
-    private PlayerCharacter player;
-    private Police police;
-    private Texture backgroundTexture;
-
-    // --- Gerenciamento de Câmera e Plano de Fundo ---
-    private float worldCameraX = 0;
-    private float scaledBackgroundWidth;
-    private float scaledBackgroundHeight;
-
-    // --- Gerenciamento de Pontuação e UI ---
-    private ScoreManager scoreManager;
-    private BitmapFont scoreFont;
-    private BitmapFont gameOverFont;
-    private GlyphLayout gameOverLayout;
-    private boolean isGameOver;
-
     @Override
     public void create() {
         spriteBatch = new SpriteBatch();
 
-        // Carrega a tela inicial
+        // Carrega telas
         startScreenTexture = new Texture(START_SCREEN_IMAGE_PATH);
-        startScreenTimer = 0;
-        showStartScreen = true;
+        backgroundTexture = new Texture(BACKGROUND_PATHS[currentPhase]);
+        gameSpeedMultiplier = PHASE_SPEED_MULTIPLIERS[currentPhase];
 
-        backgroundTexture = new Texture(BACKGROUND_IMAGE_PATH);
-
-        // Calcula a largura do fundo para manter a proporção da imagem original
+        // Calcula tamanho do background
         scaledBackgroundHeight = Gdx.graphics.getHeight();
         float aspectRatio = (float) backgroundTexture.getWidth() / backgroundTexture.getHeight();
         scaledBackgroundWidth = scaledBackgroundHeight * aspectRatio;
 
-        // Inicializa o jogador e a polícia
+        // Inicializa personagens
         player = new PlayerCharacter(Gdx.graphics.getWidth() / 2f, PLAYER_INITIAL_Y);
         police = new Police(player.getX() - POLICE_INITIAL_OFFSET_X, PLAYER_INITIAL_Y);
-        police.setHeight(player.getHeight() + POLICE_HEIGHT_OFFSET);
 
-        // Inicializa o gerenciador de pontuação e fontes
+        // Inicializa sistemas
         scoreManager = new ScoreManager(SCORE_MANAGER_INITIAL_INTERVAL);
+        initializeFonts();
+
+        isGameOver = false;
+        startScreenTimer = 0;
+    }
+
+    private void initializeFonts() {
         scoreFont = new BitmapFont();
         scoreFont.setColor(FONT_SCORE_COLOR);
         scoreFont.getData().setScale(FONT_SCORE_SCALE);
@@ -102,7 +112,6 @@ public class Main implements ApplicationListener {
         gameOverFont.getData().setScale(FONT_GAME_OVER_SCALE);
         gameOverLayout = new GlyphLayout(gameOverFont, GAME_OVER_TEXT);
 
-        // Inicializa fontes do pause
         pauseFont = new BitmapFont();
         pauseFont.setColor(Color.YELLOW);
         pauseFont.getData().setScale(4f);
@@ -115,76 +124,72 @@ public class Main implements ApplicationListener {
         resumeLayout = new GlyphLayout(menuFont, RESUME_TEXT);
         restartLayout = new GlyphLayout(menuFont, RESTART_TEXT);
         exitLayout = new GlyphLayout(menuFont, EXIT_TEXT);
-
-        isGameOver = false;
     }
 
     @Override
     public void resize(int width, int height) {
-        // Recalcula o tamanho do fundo e reposiciona entidades ao redimensionar a janela
         scaledBackgroundHeight = height;
         float aspectRatio = (float) backgroundTexture.getWidth() / backgroundTexture.getHeight();
         scaledBackgroundWidth = scaledBackgroundHeight * aspectRatio;
 
-        // Ajusta a posição Y de entidades, se existirem
-        if (player != null) {
-            player.setY(DEFAULT_ENTITY_Y_POSITION);
-        }
-        if (police != null) {
-            police.setY(DEFAULT_ENTITY_Y_POSITION);
-            // Garante que a polícia mantenha o tamanho em relação ao jogador
-            if (player != null) {
-                police.setHeight(player.getHeight() + POLICE_HEIGHT_OFFSET);
-            }
-        }
+        if (player != null) player.setY(DEFAULT_ENTITY_Y_POSITION);
+        if (police != null) police.setY(DEFAULT_ENTITY_Y_POSITION);
     }
 
     @Override
     public void render() {
-        // Limpa a tela com uma cor de fundo
         ScreenUtils.clear(BACKGROUND_CLEAR_RED, BACKGROUND_CLEAR_GREEN, BACKGROUND_CLEAR_BLUE, BACKGROUND_CLEAR_ALPHA);
 
         float deltaTime = Gdx.graphics.getDeltaTime();
 
-        // === LÓGICA DA TELA INICIAL ===
+        // Tela inicial
         if (showStartScreen) {
-            startScreenTimer += deltaTime;
-
-            if (startScreenTimer >= START_SCREEN_DISPLAY_TIME || Gdx.input.isTouched()) {
-                showStartScreen = false;
-            }
-
-            spriteBatch.begin();
-            spriteBatch.draw(startScreenTexture, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-            spriteBatch.end();
+            handleStartScreen();
             return;
         }
 
+        // Pause
         if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.ESCAPE)) {
-            isPaused = !isPaused; // Alterna entre pausado e não pausado
+            isPaused = !isPaused;
         }
 
-        // === SE O JOGO ESTIVER PAUSADO ===
         if (isPaused) {
             drawPauseScreen();
-
-            // Verifica cliques nos botões do menu de pause
             checkPauseMenuInput();
-            return; // Sai do render sem atualizar o jogo
+            return;
         }
 
-        // === SE O JOGO NÃO ESTIVER PAUSADO (SEU CÓDIGO ORIGINAL) ===
+        // Jogo principal
         if (!isGameOver) {
-            player.update(deltaTime);
-            police.update(deltaTime);
-            scoreManager.update(deltaTime);
-
-            updateCameraAndPlayerScreenPosition();
-            updatePolicePositionRelativePlayer();
-            checkCollisions();
+            updateGame(deltaTime);
         }
 
-        // Renderiza os elementos do jogo
+        renderGame();
+    }
+
+    private void handleStartScreen() {
+        startScreenTimer += Gdx.graphics.getDeltaTime();
+        if (startScreenTimer >= START_SCREEN_DISPLAY_TIME || Gdx.input.isTouched()) {
+            showStartScreen = false;
+        }
+
+        spriteBatch.begin();
+        spriteBatch.draw(startScreenTexture, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        spriteBatch.end();
+    }
+
+    private void updateGame(float deltaTime) {
+        player.update(deltaTime);
+        police.update(deltaTime);
+        scoreManager.update(deltaTime);
+
+        updateCameraAndPlayerScreenPosition();
+        updatePolicePositionRelativePlayer();
+        checkCollisions();
+        checkPhaseTransition();
+    }
+
+    private void renderGame() {
         spriteBatch.begin();
         drawBackground();
         drawGameElements(spriteBatch);
@@ -192,44 +197,65 @@ public class Main implements ApplicationListener {
         spriteBatch.end();
     }
 
-    /**
-     * Desenha a tela de pause com opções de menu
-     */
+    private void checkPhaseTransition() {
+        if (currentPhase < PHASE_SCORE_THRESHOLDS.length - 1 &&
+            scoreManager.getScore() >= PHASE_SCORE_THRESHOLDS[currentPhase]) {
+            currentPhase++;
+            changePhase(currentPhase);
+        }
+    }
+
+    private void changePhase(int newPhase) {
+        currentPhase = newPhase;
+
+        if (backgroundTexture != null) {
+            backgroundTexture.dispose();
+        }
+
+        backgroundTexture = new Texture(BACKGROUND_PATHS[currentPhase]);
+        gameSpeedMultiplier = PHASE_SPEED_MULTIPLIERS[currentPhase];
+
+        // Recalcula tamanho do background
+        scaledBackgroundHeight = Gdx.graphics.getHeight();
+        float aspectRatio = (float) backgroundTexture.getWidth() / backgroundTexture.getHeight();
+        scaledBackgroundWidth = scaledBackgroundHeight * aspectRatio;
+
+        worldCameraX = 0;
+        player.setX(Gdx.graphics.getWidth() / 2f);
+        police.setX(player.getX() - POLICE_INITIAL_OFFSET_X);
+    }
+
     private void drawPauseScreen() {
-        // Primeiro desenha o jogo congelado
         spriteBatch.begin();
         drawBackground();
         drawGameElements(spriteBatch);
         drawUI(spriteBatch);
 
-        // Desenha overlay escuro semi-transparente
+        // Overlay de pause
         spriteBatch.setColor(PAUSE_BG_COLOR);
         spriteBatch.draw(whitePixelTexture(), 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         spriteBatch.setColor(Color.WHITE);
 
-        // Desenha texto "JOGO PAUSADO"
+        // Textos do menu de pause
         float pauseX = (Gdx.graphics.getWidth() - pauseLayout.width) / 2;
         float pauseY = Gdx.graphics.getHeight() * 0.7f;
         pauseFont.draw(spriteBatch, pauseLayout, pauseX, pauseY);
 
-        // Desenha opções do menu
         float resumeX = (Gdx.graphics.getWidth() - resumeLayout.width) / 2;
-        float resumeY = Gdx.graphics.getHeight() * 0.55f;  // Ajustei as posições
+        float resumeY = Gdx.graphics.getHeight() * 0.55f;
         menuFont.draw(spriteBatch, resumeLayout, resumeX, resumeY);
 
         float restartX = (Gdx.graphics.getWidth() - restartLayout.width) / 2;
-        float restartY = Gdx.graphics.getHeight() * 0.45f; // Ajustei as posições
+        float restartY = Gdx.graphics.getHeight() * 0.45f;
         menuFont.draw(spriteBatch, restartLayout, restartX, restartY);
 
-        // NOVA: Opção Sair do Jogo
         float exitX = (Gdx.graphics.getWidth() - exitLayout.width) / 2;
-        float exitY = Gdx.graphics.getHeight() * 0.35f;    // Nova posição
+        float exitY = Gdx.graphics.getHeight() * 0.35f;
         menuFont.draw(spriteBatch, exitLayout, exitX, exitY);
 
         spriteBatch.end();
     }
 
-    // Cria uma textura branca 1x1 para o overlay
     private Texture whitePixelTexture() {
         Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
         pixmap.setColor(Color.WHITE);
@@ -240,86 +266,66 @@ public class Main implements ApplicationListener {
     }
 
     private void checkPauseMenuInput() {
-        // Tecla R - Reiniciar jogo
         if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.R)) {
             restartGame();
         }
 
-        // Tecla S - Sair do jogo (QUANDO ESTIVER PAUSADO)
         if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.S)) {
             exitGame();
         }
 
-        // Clique do mouse nas opções
         if (Gdx.input.isButtonJustPressed(com.badlogic.gdx.Input.Buttons.LEFT)) {
-            float touchX = Gdx.input.getX();
-            float touchY = Gdx.graphics.getHeight() - Gdx.input.getY(); // Inverte Y
+            float touchY = Gdx.graphics.getHeight() - Gdx.input.getY();
+            float menuHeight = 30;
 
-            float resumeY = Gdx.graphics.getHeight() * 0.55f;   // Ajustado
-            float restartY = Gdx.graphics.getHeight() * 0.45f;  // Ajustado
-            float exitY = Gdx.graphics.getHeight() * 0.35f;     // Ajustado
-            float menuHeight = 30; // Altura aproximada do texto
+            float resumeY = Gdx.graphics.getHeight() * 0.55f;
+            float restartY = Gdx.graphics.getHeight() * 0.45f;
+            float exitY = Gdx.graphics.getHeight() * 0.35f;
 
-            // Verifica clique em "Continuar"
             if (touchY >= resumeY - menuHeight && touchY <= resumeY + menuHeight) {
                 isPaused = false;
-            }
-
-            // Verifica clique em "Reiniciar"
-            if (touchY >= restartY - menuHeight && touchY <= restartY + menuHeight) {
+            } else if (touchY >= restartY - menuHeight && touchY <= restartY + menuHeight) {
                 restartGame();
-            }
-
-            // NOVA: Verifica clique em "Sair do Jogo"
-            if (touchY >= exitY - menuHeight && touchY <= exitY + menuHeight) {
+            } else if (touchY >= exitY - menuHeight && touchY <= exitY + menuHeight) {
                 exitGame();
             }
         }
     }
 
-    /**
-     * Sai do jogo
-     */
     private void exitGame() {
-        Gdx.app.exit(); // Fecha a aplicação
+        Gdx.app.exit();
     }
 
-    /**
-     * Reinicia o jogo para o estado inicial
-     */
     private void restartGame() {
-        // Reseta variáveis do jogo
         isGameOver = false;
         isPaused = false;
         worldCameraX = 0;
+        currentPhase = 0;
+        gameSpeedMultiplier = PHASE_SPEED_MULTIPLIERS[0];
 
-        // Recria os personagens
         player = new PlayerCharacter(Gdx.graphics.getWidth() / 2f, PLAYER_INITIAL_Y);
         police = new Police(player.getX() - POLICE_INITIAL_OFFSET_X, PLAYER_INITIAL_Y);
-        police.setHeight(player.getHeight() + POLICE_HEIGHT_OFFSET);
 
-        // Reseta a pontuação
         scoreManager = new ScoreManager(SCORE_MANAGER_INITIAL_INTERVAL);
+
+        if (backgroundTexture != null) {
+            backgroundTexture.dispose();
+        }
+        backgroundTexture = new Texture(BACKGROUND_PATHS[0]);
     }
 
-    /**
-     * Atualiza a posição da câmera do mundo e a posição de tela do jogador
-     * para criar um efeito de rolagem da câmera.
-     */
     private void updateCameraAndPlayerScreenPosition() {
         float playerScreenXRelativeToCamera = player.getX() - worldCameraX;
 
         float leftScrollThreshold = Gdx.graphics.getWidth() * CAMERA_SCROLL_THRESHOLD_LEFT_PERCENT;
         float rightScrollThreshold = Gdx.graphics.getWidth() * CAMERA_SCROLL_THRESHOLD_RIGHT_PERCENT - player.getWidth();
 
-        // Lógica de rolagem da câmera baseada na posição do jogador
         if (playerScreenXRelativeToCamera >= rightScrollThreshold) {
             worldCameraX = player.getX() - rightScrollThreshold;
         } else if (playerScreenXRelativeToCamera <= leftScrollThreshold) {
             worldCameraX = player.getX() - leftScrollThreshold;
         }
 
-        // Limita a câmera para não ir além do início do mundo
         if (worldCameraX < 0) {
             worldCameraX = 0;
             if (player.getX() < 0) {
@@ -327,26 +333,24 @@ public class Main implements ApplicationListener {
             }
         }
 
-        // Calcula e define a posição de tela do jogador (para renderização)
         float clampedPlayerScreenX = player.getX() - worldCameraX;
         clampedPlayerScreenX = Math.max(0, clampedPlayerScreenX);
         clampedPlayerScreenX = Math.min(Gdx.graphics.getWidth() - player.getWidth(), clampedPlayerScreenX);
         player.setCurrentScreenX(clampedPlayerScreenX);
     }
 
-    /**
-     * Ajusta a posição da polícia para que ela não fique muito atrás do jogador.
-     */
     private void updatePolicePositionRelativePlayer() {
         float maxDistanceFromPlayer = Gdx.graphics.getWidth() * POLICE_MAX_DISTANCE_FROM_PLAYER_PERCENT;
-        if (police.getX() < player.getX() - maxDistanceFromPlayer) {
-            police.setX(player.getX() - maxDistanceFromPlayer);
+        float phaseDifficulty = 1.0f - (currentPhase * 0.2f);
+        float adjustedMaxDistance = maxDistanceFromPlayer * Math.max(0.4f, phaseDifficulty);
+
+        if (police.getX() < player.getX() - adjustedMaxDistance) {
+            police.setX(player.getX() - adjustedMaxDistance);
         }
+
+        police.setSpeedMultiplier(gameSpeedMultiplier);
     }
 
-    /**
-     * Verifica colisões entre o jogador e a polícia.
-     */
     private void checkCollisions() {
         Rectangle playerBounds = player.getBounds();
         Rectangle policeBounds = police.getBounds();
@@ -356,9 +360,6 @@ public class Main implements ApplicationListener {
         }
     }
 
-    /**
-     * Desenha o plano de fundo com rolagem paralax.
-     */
     private void drawBackground() {
         float backgroundDrawOffset = -(worldCameraX % scaledBackgroundWidth);
         if (backgroundDrawOffset > 0) {
@@ -370,10 +371,6 @@ public class Main implements ApplicationListener {
         spriteBatch.draw(backgroundTexture, backgroundDrawOffset + scaledBackgroundWidth * 2, 0, scaledBackgroundWidth, scaledBackgroundHeight);
     }
 
-    /**
-     * Desenha os personagens do jogo.
-     * @param spriteBatch O SpriteBatch para desenhar.
-     */
     private void drawGameElements(SpriteBatch spriteBatch) {
         if (!isGameOver) {
             player.render(spriteBatch);
@@ -381,45 +378,31 @@ public class Main implements ApplicationListener {
         }
     }
 
-    /**
-     * Desenha a interface do usuário (pontuação ou tela de Game Over).
-     * @param spriteBatch O SpriteBatch para desenhar.
-     */
     private void drawUI(SpriteBatch spriteBatch) {
         if (isGameOver) {
-            // Centraliza o texto de Game Over
             float x = (Gdx.graphics.getWidth() - gameOverLayout.width) / 2;
             float y = (Gdx.graphics.getHeight() + gameOverLayout.height) / 2;
             gameOverFont.draw(spriteBatch, gameOverLayout, x, y);
         } else {
-            // Desenha a pontuação no canto superior esquerdo
             scoreFont.draw(spriteBatch, "Score: " + scoreManager.getScore(), 10, Gdx.graphics.getHeight() - 10);
         }
     }
 
     @Override
-    public void pause() {
-    }
+    public void pause() {}
 
     @Override
-    public void resume() {
-    }
+    public void resume() {}
 
     @Override
     public void dispose() {
         spriteBatch.dispose();
-
-        if (startScreenTexture != null) {
-            startScreenTexture.dispose();
-        }
-
-        backgroundTexture.dispose();
-        player.dispose();
-        police.dispose();
+        if (startScreenTexture != null) startScreenTexture.dispose();
+        if (backgroundTexture != null) backgroundTexture.dispose();
+        if (player != null) player.dispose();
+        if (police != null) police.dispose();
         scoreFont.dispose();
         gameOverFont.dispose();
-
-        // Novas fontes do pause
         pauseFont.dispose();
         menuFont.dispose();
     }
