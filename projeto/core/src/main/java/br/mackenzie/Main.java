@@ -46,7 +46,7 @@ public class Main implements ApplicationListener {
     private static final float POLICE_INITIAL_OFFSET_X = 300f;
     private static final float DEFAULT_ENTITY_Y_POSITION = 20f;
     private static final int SCORE_MANAGER_INITIAL_INTERVAL = 10;
-    private static final int VICTORY_SCORE = 500;
+    private static final int VICTORY_SCORE = 300;
     private static final float START_SCREEN_DISPLAY_TIME = 5f;
 
     // Configurações de Câmera
@@ -60,7 +60,7 @@ public class Main implements ApplicationListener {
 
     // Sistema de Fases
     private static final float[] PHASE_SPEED_MULTIPLIERS = {1.0f, 1.2f, 1.38f};
-    private static final int[] PHASE_SCORE_THRESHOLDS = {100, 250, 500};
+    private static final int[] PHASE_SCORE_THRESHOLDS = {100, 250, 300};
 
 
     // === VARIÁVEIS DO JOGO ===
